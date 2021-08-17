@@ -56,7 +56,7 @@ contract Fund is BasicFund {
     /// @notice Subscript fund
     /// @dev When subscribing to the fund, fee will be collected, and contract access is not allowed
     /// @param amount Subscription amount
-    function joinPool(uint256 amount) external checkAllowJoin notAllowContract {
+    function joinPool(uint256 amount) external isAllowJoin notAllowContract {
         address investor = msg.sender;
         require(amount <= ioToken().balanceOf(investor) && amount > 0, "Fund.joinPool: Insufficient balance");
         uint256 fundAmount = convertToFund(amount);
@@ -73,7 +73,7 @@ contract Fund is BasicFund {
     /// @notice Redeem fund
     /// @dev When the fund is redeemed, fees will be collected, and contract access is not allowed
     /// @param amount Redeem amount
-    function exitPool(uint256 amount) external checkAllowExit notAllowContract {
+    function exitPool(uint256 amount) external isAllowExit notAllowContract {
         address investor = msg.sender;
         require(balanceOf(investor) >= amount && amount > 0, "Fund.exitPool: Insufficient balance");
         //take exit fee
@@ -95,7 +95,7 @@ contract Fund is BasicFund {
     /// @notice Redeem the underlying assets of the fund
     /// @dev When the fund is redeemed, fees will be collected, and contract access is not allowed
     /// @param amount Redeem amount
-    function exitPoolOfUnderlying(uint256 amount) external checkAllowExit notAllowContract {
+    function exitPoolOfUnderlying(uint256 amount) external isAllowExit notAllowContract {
         address investor = msg.sender;
         require(balanceOf(investor) >= amount && amount > 0, "Fund.exitPoolOfUnderlying: Insufficient balance");
         //take exit fee

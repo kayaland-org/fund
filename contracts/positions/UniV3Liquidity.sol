@@ -37,7 +37,7 @@ contract UniV3Liquidity is GovIdentity {
     //Working positions
     EnumerableSet.UintSet private works;
     //Underlying asset
-    EnumerableSet.AddressSet private underlying;
+    EnumerableSet.AddressSet private underlyings;
 
 
     //Swap
@@ -106,6 +106,17 @@ contract UniV3Liquidity is GovIdentity {
         }
     }
 
+    /// @notice in underlyings token address array
+    /// @dev read in underlyings token address array
+    /// @return tokens address array
+    function getUnderlyings() public view returns (address[] memory tokens){
+        uint256 length = underlyings.length();
+        tokens = new address[](length);
+        for (uint256 i = 0; i < underlyings.length(); i++) {
+            tokens[i] = underlyings.at(i);
+        }
+    }
+
     /// @notice Authorize UniV3 contract to move fund asset
     /// @dev Only allow governance and strategist identities to execute authorized functions to reduce miner fee consumption
     /// @param token Authorized target token
@@ -143,8 +154,8 @@ contract UniV3Liquidity is GovIdentity {
         address fromToken = path.getFirstAddress();
         address toToken = path.getLastAddress();
         swapRoute[fromToken][toToken] = path;
-        if (!underlying.contains(fromToken)) underlying.add(fromToken);
-        if (!underlying.contains(toToken)) underlying.add(toToken);
+        if (!underlyings.contains(fromToken)) underlyings.add(fromToken);
+        if (!underlyings.contains(toToken)) underlyings.add(toToken);
     }
 
     /// @notice Set the underlying asset token address
@@ -152,8 +163,8 @@ contract UniV3Liquidity is GovIdentity {
     /// @param ts The underlying asset token address array to be added
     function setUnderlyings(address[] memory ts) public onlyGovernance {
         for (uint256 i = 0; i < ts.length; i++) {
-            if (!underlying.contains(ts[i])) {
-                underlying.add(ts[i]);
+            if (!underlyings.contains(ts[i])) {
+                underlyings.add(ts[i]);
             }
         }
     }
@@ -163,8 +174,8 @@ contract UniV3Liquidity is GovIdentity {
     /// @param ts The underlying asset token address array to be deleted
     function removeUnderlyings(address[] memory ts) public onlyGovernance {
         for (uint256 i = 0; i < ts.length; i++) {
-            if (underlying.contains(ts[i])) {
-                underlying.remove(ts[i]);
+            if (underlyings.contains(ts[i])) {
+                underlyings.remove(ts[i]);
             }
         }
     }
@@ -346,8 +357,8 @@ contract UniV3Liquidity is GovIdentity {
         uint256 surplusAmount = ioToken.balanceOf(address(this));
         if (surplusAmount < amount) {
             _decreaseLiquidityByScale(scale);
-            for (uint256 i = 0; i < underlying.length(); i++) {
-                address token = underlying.at(i);
+            for (uint256 i = 0; i < underlyings.length(); i++) {
+                address token = underlyings.at(i);
                 //todo Optimise swap
                 if (token != address(ioToken)) {
                     uint256 balance = IERC20(token).balanceOf(address(this));
@@ -367,11 +378,23 @@ contract UniV3Liquidity is GovIdentity {
     /// @param to Withdraw address
     /// @param scale Withdraw percentage
     function withdrawOfUnderlying(address to, uint256 scale) external onlyFund {
-        _decreaseLiquidityByScale(scale);
-        for (uint256 i = 0; i < underlying.length(); i++) {
-            address token = underlying.at(i);
+        uint256 length=underlyings.length();
+        uint256[] memory balances = new uint256[](length);
+        uint256[] memory withdrawAmounts = new uint256[](length);
+        for (uint256 i = 0; i < length; i++) {
+            address token = underlyings.at(i);
             uint256 balance = IERC20(token).balanceOf(address(this));
-            IERC20(token).safeTransfer(to, balance.mul(scale).div(1e18));
+            balances[i] = balance;
+            withdrawAmounts[i] = balance.mul(scale).div(1e18);
+        }
+        _decreaseLiquidityByScale(scale);
+        for (uint256 i = 0; i < length; i++) {
+            address token = underlyings.at(i);
+            uint256 balance = IERC20(token).balanceOf(address(this));
+            uint256 decreaseAmount = balance.sub(balances[i]);
+            uint256 addAmount=decreaseAmount.mul(scale).div(1e18);
+            uint256 transferAmount = withdrawAmounts[i].add(addAmount);
+            IERC20(token).safeTransfer(to, transferAmount);
         }
     }
 
@@ -417,8 +440,8 @@ contract UniV3Liquidity is GovIdentity {
     /// @return idle asset
     function idleAssets() public view returns (uint256){
         uint256 total;
-        for (uint256 i = 0; i < underlying.length(); i++) {
-            address token = underlying.at(i);
+        for (uint256 i = 0; i < underlyings.length(); i++) {
+            address token = underlyings.at(i);
             uint256 balance = IERC20(token).balanceOf(address(this));
             if (token == address(ioToken)) {
                 total = total.add(balance);

@@ -41,15 +41,27 @@ abstract contract BasicFund is ERC20, GovIdentity {
     }
 
     /// @notice is allow join
-    modifier checkAllowJoin() {
-        require(SmartPoolStorage.load().allowJoin, "BasicFund.checkAllowJoin: fund is not allowJoin");
+    modifier isAllowJoin() {
+        require(checkAllowJoin(), "BasicFund.checkAllowJoin: fund is not allowJoin");
         _;
     }
 
     /// @notice is allow exit
-    modifier checkAllowExit() {
-        require(SmartPoolStorage.load().allowExit, "BasicFund.checkAllowExit: fund is not allowExit");
+    modifier isAllowExit() {
+        require(checkAllowExit(), "BasicFund.checkAllowExit: fund is not allowExit");
         _;
+    }
+
+    /// @notice Check allow join
+    /// @return bool
+    function checkAllowJoin()public view returns(bool){
+        return SmartPoolStorage.load().allowJoin;
+    }
+
+    /// @notice Check allow exit
+    /// @return bool
+    function checkAllowExit()public view returns(bool){
+        return SmartPoolStorage.load().allowExit;
     }
 
     /// @notice Fund decimals
